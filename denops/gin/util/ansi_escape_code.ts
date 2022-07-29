@@ -1,5 +1,5 @@
 import * as ansiEscapeCode from "https://deno.land/x/ansi_escape_code@v0.1.2/mod.ts";
-import { Decoration } from "https://deno.land/x/denops_std@v3.3.0/buffer/mod.ts";
+import { Decoration } from "https://deno.land/x/denops_std@v3.5.0/buffer/mod.ts";
 import { countVimBytes } from "./text.ts";
 
 export function removeAnsiEscapeCode(

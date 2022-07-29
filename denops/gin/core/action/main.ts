@@ -1,4 +1,4 @@
-import type { Denops } from "https://deno.land/x/denops_std@v3.3.0/mod.ts";
+import type { Denops } from "https://deno.land/x/denops_std@v3.5.0/mod.ts";
 import * as unknownutil from "https://deno.land/x/unknownutil@v2.0.0/mod.ts";
 import * as registry from "./registry.ts";
 import * as action from "./action.ts";

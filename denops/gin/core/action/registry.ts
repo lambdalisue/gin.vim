@@ -1,7 +1,7 @@
-import type { Denops } from "https://deno.land/x/denops_std@v3.3.0/mod.ts";
-import * as anonymous from "https://deno.land/x/denops_std@v3.3.0/anonymous/mod.ts";
-import * as autocmd from "https://deno.land/x/denops_std@v3.3.0/autocmd/mod.ts";
-import * as fn from "https://deno.land/x/denops_std@v3.3.0/function/mod.ts";
+import type { Denops } from "https://deno.land/x/denops_std@v3.5.0/mod.ts";
+import * as anonymous from "https://deno.land/x/denops_std@v3.5.0/anonymous/mod.ts";
+import * as autocmd from "https://deno.land/x/denops_std@v3.5.0/autocmd/mod.ts";
+import * as fn from "https://deno.land/x/denops_std@v3.5.0/function/mod.ts";
 import type { Range } from "./action.ts";
 
 export type { Range };

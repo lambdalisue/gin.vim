@@ -1,17 +1,17 @@
-import type { Denops } from "https://deno.land/x/denops_std@v3.3.0/mod.ts";
-import * as batch from "https://deno.land/x/denops_std@v3.3.0/batch/mod.ts";
-import * as bufname from "https://deno.land/x/denops_std@v3.3.0/bufname/mod.ts";
-import * as fn from "https://deno.land/x/denops_std@v3.3.0/function/mod.ts";
-import * as option from "https://deno.land/x/denops_std@v3.3.0/option/mod.ts";
-import * as vars from "https://deno.land/x/denops_std@v3.3.0/variable/mod.ts";
+import type { Denops } from "https://deno.land/x/denops_std@v3.5.0/mod.ts";
+import * as batch from "https://deno.land/x/denops_std@v3.5.0/batch/mod.ts";
+import * as bufname from "https://deno.land/x/denops_std@v3.5.0/bufname/mod.ts";
+import * as fn from "https://deno.land/x/denops_std@v3.5.0/function/mod.ts";
+import * as option from "https://deno.land/x/denops_std@v3.5.0/option/mod.ts";
+import * as vars from "https://deno.land/x/denops_std@v3.5.0/variable/mod.ts";
 import * as unknownutil from "https://deno.land/x/unknownutil@v2.0.0/mod.ts";
 import {
   formatFlags,
   parse,
   validateFlags,
   validateOpts,
-} from "https://deno.land/x/denops_std@v3.3.0/argument/mod.ts";
-import * as buffer from "https://deno.land/x/denops_std@v3.3.0/buffer/mod.ts";
+} from "https://deno.land/x/denops_std@v3.5.0/argument/mod.ts";
+import * as buffer from "https://deno.land/x/denops_std@v3.5.0/buffer/mod.ts";
 import { normCmdArgs } from "../../util/cmd.ts";
 import { getWorktreeFromOpts } from "../../util/worktree.ts";
 import { execute } from "../../git/process.ts";

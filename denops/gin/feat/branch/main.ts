@@ -1,5 +1,5 @@
-import type { Denops } from "https://deno.land/x/denops_std@v3.3.0/mod.ts";
-import * as helper from "https://deno.land/x/denops_std@v3.3.0/helper/mod.ts";
+import type { Denops } from "https://deno.land/x/denops_std@v3.5.0/mod.ts";
+import * as helper from "https://deno.land/x/denops_std@v3.5.0/helper/mod.ts";
 import * as unknownutil from "https://deno.land/x/unknownutil@v2.0.0/mod.ts";
 import { command, read } from "./command.ts";
 

@@ -1,5 +1,5 @@
-import { assertEquals } from "https://deno.land/std@0.133.0/testing/asserts.ts";
-import * as bytes from "https://deno.land/std@0.133.0/bytes/mod.ts";
+import { assertEquals } from "https://deno.land/std@0.150.0/testing/asserts.ts";
+import * as bytes from "https://deno.land/std@0.150.0/bytes/mod.ts";
 import { encodeUtf8 } from "../../util/text.ts";
 import {
   parse,
