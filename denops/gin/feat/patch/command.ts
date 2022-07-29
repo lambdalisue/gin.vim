@@ -3,6 +3,7 @@ import * as batch from "https://deno.land/x/denops_std@v3.3.0/batch/mod.ts";
 import * as fn from "https://deno.land/x/denops_std@v3.3.0/function/mod.ts";
 import * as mapping from "https://deno.land/x/denops_std@v3.3.0/mapping/mod.ts";
 import * as vars from "https://deno.land/x/denops_std@v3.3.0/variable/mod.ts";
+import * as option from "https://deno.land/x/denops_std@v3.3.0/option/mod.ts";
 import * as unknownutil from "https://deno.land/x/unknownutil@v2.0.0/mod.ts";
 import {
   builtinOpts,
@@ -11,12 +12,25 @@ import {
   validateOpts,
 } from "https://deno.land/x/denops_std@v3.3.0/argument/mod.ts";
 import * as buffer from "https://deno.land/x/denops_std@v3.3.0/buffer/mod.ts";
-import { normCmdArgs } from "../../util/cmd.ts";
-import { getWorktreeFromOpts } from "../../util/worktree.ts";
-import { command as editCommand } from "../edit/command.ts";
+import { expand, normCmdArgs } from "../../util/cmd.ts";
+import {
+  findWorktreeFromSuspects,
+  listWorktreeSuspectsFromDenops,
+} from "../../util/worktree.ts";
+import { exec as editExec } from "../edit/command.ts";
+
+export type Options = {
+  worktree?: string;
+  noHead?: boolean;
+  noWorktree?: boolean;
+  opener?: string;
+  cmdarg?: string;
+  mods?: string;
+};
 
 export async function command(
   denops: Denops,
+  mods: string,
   args: string[],
 ): Promise<void> {
   const [opts, _, residue] = parse(await normCmdArgs(denops, args));
@@ -26,78 +40,103 @@ export async function command(
     "no-worktree",
     ...builtinOpts,
   ]);
-  const noHead = "no-head" in opts;
-  const noWorktree = "no-worktree" in opts;
+  const options = {
+    worktree: opts["worktree"],
+    noHead: "no-head" in opts,
+    noWorktree: "no-worktree" in opts,
+    cmdarg: formatOpts(opts, builtinOpts).join(" "),
+    mods,
+  };
   const [abspath] = parseResidue(residue);
-  const worktree = await getWorktreeFromOpts(denops, opts);
-  const leading = formatOpts(opts, builtinOpts);
+  await exec(denops, abspath, options);
+}
 
-  const disableDefaultMappings = await vars.g.get(
+export async function exec(
+  denops: Denops,
+  filename: string,
+  options: Options = {},
+): Promise<void> {
+  const [verbose, disableDefaultMappings] = await batch.gather(
     denops,
-    "gin_patch_disable_default_mappings",
-    false,
-  );
+    async (denops) => {
+      await option.verbose.get(denops);
+      await vars.g.get(
+        denops,
+        "gin_patch_disable_default_mappings",
+        false,
+      );
+    },
+  ) as [number, unknown];
   unknownutil.assertBoolean(disableDefaultMappings);
 
-  let bufnrHead = -1;
-  if (!noHead) {
-    await editCommand(denops, [
-      ...leading,
-      `++worktree=${worktree}`,
-      "HEAD",
-      abspath,
-    ]);
-    bufnrHead = await fn.bufnr(denops);
-    await denops.cmd("botright vsplit");
+  const worktree = await findWorktreeFromSuspects(
+    options.worktree
+      ? [await expand(denops, options.worktree)]
+      : await listWorktreeSuspectsFromDenops(denops, !!verbose),
+    !!verbose,
+  );
+
+  const infoIndex = await editExec(denops, filename, undefined, {
+    "cached": "",
+  }, {
+    worktree,
+    opener: options.opener,
+    cmdarg: options.cmdarg,
+    mods: options.mods,
+  });
+
+  let infoHead: buffer.OpenResult | undefined;
+  if (!options.noHead) {
+    infoHead = await editExec(denops, filename, "HEAD", {}, {
+      worktree,
+      opener: "topleft vsplit",
+      cmdarg: options.cmdarg,
+      mods: options.mods,
+    });
+    await fn.win_gotoid(denops, infoIndex.winid);
   }
 
-  await editCommand(denops, [
-    ...leading,
-    `++worktree=${worktree}`,
-    "--cached",
-    abspath,
-  ]);
-  const bufnrIndex = await fn.bufnr(denops);
-
-  let bufnrWorktree = -1;
-  if (!noWorktree) {
-    await denops.cmd("botright vsplit");
-    await editCommand(denops, [
-      ...leading,
-      `++worktree=${worktree}`,
-      "",
-      abspath,
-    ]);
-    bufnrWorktree = await fn.bufnr(denops);
+  let infoWorktree: buffer.OpenResult | undefined;
+  if (!options.noWorktree) {
+    infoWorktree = await editExec(denops, filename, undefined, {}, {
+      worktree,
+      opener: "botright vsplit",
+      cmdarg: options.cmdarg,
+      mods: options.mods,
+    });
   }
 
   // HEAD
-  if (bufnrHead !== -1) {
-    await initHead(denops, bufnrHead, bufnrIndex, disableDefaultMappings);
+  if (infoHead) {
+    await initHead(
+      denops,
+      infoHead.bufnr,
+      infoIndex.bufnr,
+      disableDefaultMappings,
+    );
   }
 
   // INDEX
   await initIndex(
     denops,
-    bufnrIndex,
-    bufnrHead,
-    bufnrWorktree,
+    infoIndex.bufnr,
+    infoHead?.bufnr,
+    infoWorktree?.bufnr,
     disableDefaultMappings,
   );
 
   // WORKTREE
-  if (bufnrWorktree !== -1) {
+  if (infoWorktree) {
     await initWorktree(
       denops,
-      bufnrWorktree,
-      bufnrIndex,
+      infoWorktree.bufnr,
+      infoIndex.bufnr,
       disableDefaultMappings,
     );
   }
 
   // Focus INDEX
-  const winid = await fn.bufwinid(denops, bufnrIndex);
-  await fn.win_gotoid(denops, winid);
+  await fn.win_gotoid(denops, infoIndex.winid);
 }
 
 function parseResidue(
@@ -196,8 +235,8 @@ async function initWorktree(
 async function initIndex(
   denops: Denops,
   bufnr: number,
-  bufnrHead: number,
-  bufnrWorktree: number,
+  bufnrHead: number | undefined,
+  bufnrWorktree: number | undefined,
   disableDefaultMappings: boolean,
 ): Promise<void> {
   await buffer.ensure(denops, bufnr, async () => {

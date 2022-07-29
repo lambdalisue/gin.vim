@@ -6,48 +6,83 @@ import * as helper from "https://deno.land/x/denops_std@v3.3.0/helper/mod.ts";
 import * as option from "https://deno.land/x/denops_std@v3.3.0/option/mod.ts";
 import * as unknownutil from "https://deno.land/x/unknownutil@v2.0.0/mod.ts";
 import {
-  builtinOpts,
   parseOpts,
   validateOpts,
 } from "https://deno.land/x/denops_std@v3.3.0/argument/mod.ts";
-import { normCmdArgs } from "../../util/cmd.ts";
+import { expand, normCmdArgs } from "../../util/cmd.ts";
 import * as buffer from "https://deno.land/x/denops_std@v3.3.0/buffer/mod.ts";
 import {
   buildDecorationsFromAnsiEscapeCode,
   removeAnsiEscapeCode,
 } from "../../util/ansi_escape_code.ts";
-import { getWorktreeFromOpts } from "../../util/worktree.ts";
+import {
+  findWorktreeFromSuspects,
+  listWorktreeSuspectsFromDenops,
+} from "../../util/worktree.ts";
 import { decodeUtf8 } from "../../util/text.ts";
 import { run } from "../../git/process.ts";
+
+export type Options = {
+  worktree?: string;
+  buffer?: boolean | string;
+  monochrome?: boolean;
+  fileformat?: string;
+  encoding?: string;
+};
 
 export async function command(
   denops: Denops,
   args: string[],
 ): Promise<void> {
-  const [env, verbose, eventignore] = await batch.gather(
-    denops,
-    async (denops) => {
-      await fn.environ(denops);
-      await option.verbose.get(denops);
-      await option.eventignore.get(denops);
-    },
-  );
-  unknownutil.assertObject(env, unknownutil.isString);
-  unknownutil.assertNumber(verbose);
-  unknownutil.assertString(eventignore);
   const [opts, residue] = parseOpts(await normCmdArgs(denops, args));
   validateOpts(opts, [
     "worktree",
     "buffer",
     "monochrome",
-    ...builtinOpts,
+    "ff",
+    "fileformat",
+    "enc",
+    "encoding",
   ]);
-  const enableColor = "buffer" in opts && !("monochrome" in opts);
+  const buffer = opts["buffer"] === "" ? true : opts["buffer"];
+  const options = {
+    worktree: opts["worktree"],
+    buffer,
+    monochrome: "monochrome" in opts,
+    fileformat: opts["ff"] ?? opts["fileformat"],
+    encoding: opts["enc"] ?? opts["encoding"],
+  };
+  await exec(denops, residue, options);
+}
+
+export async function exec(
+  denops: Denops,
+  args: string[],
+  options: Options = {},
+): Promise<void> {
+  const [verbose, env, eventignore] = await batch.gather(
+    denops,
+    async (denops) => {
+      await option.verbose.get(denops);
+      await fn.environ(denops);
+      await option.eventignore.get(denops);
+    },
+  );
+  unknownutil.assertNumber(verbose);
+  unknownutil.assertObject(env, unknownutil.isString);
+  unknownutil.assertString(eventignore);
+
+  const enableColor = options.buffer && !options.monochrome;
   const cmd = [
     ...(enableColor ? ["-c", "color.ui=always"] : []),
-    ...residue,
+    ...args,
   ];
-  const worktree = await getWorktreeFromOpts(denops, opts);
+  const worktree = await findWorktreeFromSuspects(
+    options.worktree
+      ? [await expand(denops, options.worktree)]
+      : await listWorktreeSuspectsFromDenops(denops, !!verbose),
+    !!verbose,
+  );
   const proc = run(cmd, {
     printCommand: !!verbose,
     stdin: "null",
@@ -63,27 +98,34 @@ export async function command(
     proc.stderrOutput(),
   ]);
   proc.close();
-  if ("buffer" in opts) {
+  if (options.buffer) {
     let decorations: buffer.Decoration[] = [];
     const preprocessor = (content: string[]) => {
       const [trimmed, decos] = buildDecorationsFromAnsiEscapeCode(content);
       decorations = decos;
       return trimmed;
     };
-    await denops.cmd("noswapfile enew");
-    const bufnr = await fn.bufnr(denops);
-    await buffer.ensure(denops, bufnr, async () => {
-      await batch.batch(denops, async (denops) => {
-        await option.modifiable.setLocal(denops, false);
-      });
+    let bufnr: number;
+    if (typeof options.buffer === "string") {
+      bufnr = await fn.bufnr(denops, options.buffer);
+      if (bufnr === -1) {
+        bufnr = await fn.bufnr(denops, Number(options.buffer));
+      }
+      await fn.bufload(denops, bufnr);
+    } else {
+      await denops.cmd("noswapfile enew");
+      bufnr = await fn.bufnr(denops);
+    }
+    await batch.batch(denops, async (denops) => {
+      await fn.setbufvar(denops, bufnr, "&modifiable", 0);
     });
     await buffer.assign(
       denops,
       bufnr,
       new Uint8Array([...stdout, ...stderr]),
       {
-        fileformat: (opts["ff"] ?? opts["fileformat"]),
-        fileencoding: opts["enc"] ?? opts["fileencoding"],
+        fileformat: options.fileformat,
+        fileencoding: options.encoding,
         preprocessor,
       },
     );

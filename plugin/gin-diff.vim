@@ -15,4 +15,4 @@ function! s:command(...) abort
   call denops#request('gin', 'diff:command', a:000)
 endfunction
 
-command! -bar -nargs=* GinDiff call s:command(<f-args>)
+command! -bar -nargs=* GinDiff call s:command(<q-mods>, <f-args>)

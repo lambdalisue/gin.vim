@@ -2,77 +2,119 @@ import type { Denops } from "https://deno.land/x/denops_std@v3.3.0/mod.ts";
 import * as batch from "https://deno.land/x/denops_std@v3.3.0/batch/mod.ts";
 import * as bufname from "https://deno.land/x/denops_std@v3.3.0/bufname/mod.ts";
 import * as fn from "https://deno.land/x/denops_std@v3.3.0/function/mod.ts";
-import * as option from "https://deno.land/x/denops_std@v3.3.0/option/mod.ts";
-import * as unknownutil from "https://deno.land/x/unknownutil@v2.0.0/mod.ts";
-import * as fs from "https://deno.land/std@0.133.0/fs/mod.ts";
 import * as path from "https://deno.land/std@0.133.0/path/mod.ts";
+import * as unknownutil from "https://deno.land/x/unknownutil@v2.0.0/mod.ts";
 import { GIN_BUFFER_PROTOCOLS } from "../global.ts";
-import { expand } from "../util/cmd.ts";
-import { Opts } from "https://deno.land/x/denops_std@v3.3.0/argument/mod.ts";
 import { find } from "../git/finder.ts";
 
-export async function getWorktree(denops: Denops): Promise<string> {
-  const [cwd, filename, verbose] = await batch.gather(
-    denops,
-    async (denops) => {
-      await fn.getcwd(denops);
-      await fn.expand(denops, "%:p");
-      await option.verbose.get(denops);
-    },
-  );
-  unknownutil.assertString(cwd);
-  unknownutil.assertString(filename);
-  unknownutil.assertNumber(verbose);
-  if (verbose) {
-    console.debug("getWorktree");
-    console.debug(`  cwd: ${cwd}`);
-    console.debug(`  filename: ${filename}`);
-  }
-  if (filename) {
-    try {
-      const { scheme, expr } = bufname.parse(filename);
-      if (GIN_BUFFER_PROTOCOLS.includes(scheme)) {
-        return unknownutil.ensureString(
-          await fn.fnamemodify(denops, expr, ":p"),
-        );
-      }
-    } catch {
-      // Ignore errors
-    }
-  }
-  let candidates = new Set([cwd]);
-  if (await fs.exists(filename)) {
-    candidates.add(path.dirname(filename));
-    const realpath = await Deno.realPath(filename);
-    candidates.add(path.dirname(realpath));
-  }
-  candidates = new Set(Array.from(candidates).reverse());
-  if (verbose) {
-    console.debug(`  candidates: ${[...candidates]}`);
-  }
-  for (const c of candidates) {
+/**
+ * Find a git worktree from a suspected directory
+ */
+export async function findWorktreeFromSuspect(
+  suspect: string,
+  verbose?: boolean,
+): Promise<string> {
+  // Check if 'anchor' is a gin buffer name
+  try {
+    const { scheme, expr } = bufname.parse(suspect);
     if (verbose) {
-      console.debug(`Trying to find a git repository from '${c}'`);
+      console.debug(`The anchor scheme is '${scheme}' and expr is '${expr}'`);
     }
+    if (GIN_BUFFER_PROTOCOLS.includes(scheme)) {
+      // GIN_BUFFER_PROTOCOLS always records an absolute path in `expr`
+      return expr;
+    }
+  } catch {
+    // Failed to execute 'bufname.parse(suspect)' means that the 'suspect' seems a real filepath.
+    const candidates = new Set(await normSuspect(suspect));
+    for (const c of candidates) {
+      if (verbose) {
+        console.debug(`Trying to find a git repository from '${c}'`);
+      }
+      try {
+        return await find(c);
+      } catch {
+        // Fail silently
+      }
+    }
+  }
+  throw new Error(`No git repository found (searched from ${suspect})`);
+}
+
+/**
+ * Find a git worktree from suspected directories
+ */
+export async function findWorktreeFromSuspects(
+  suspects: string[],
+  verbose?: boolean,
+): Promise<string> {
+  for (const suspect of suspects) {
     try {
-      return await find(c);
+      return await findWorktreeFromSuspect(suspect, verbose);
     } catch {
       // Fail silently
     }
   }
   throw new Error(
     `No git repository found (searched from ${
-      [...candidates.values()].join(", ")
+      [...suspects.values()].join(", ")
     })`,
   );
 }
 
-export async function getWorktreeFromOpts(
+/**
+ * Return candidates of worktree anchor directories from the host environment
+ */
+export async function listWorktreeSuspectsFromDenops(
   denops: Denops,
-  opts: Opts,
-): Promise<string> {
-  const worktree = opts["worktree"]
-    ? await find(await expand(denops, opts["worktree"]))
-    : await getWorktree(denops);
-  return worktree;
+  verbose?: boolean,
+): Promise<string[]> {
+  const [cwd, bname] = await batch.gather(
+    denops,
+    async (denops) => {
+      await fn.getcwd(denops);
+      await fn.expand(denops, "%:p");
+    },
+  );
+  unknownutil.assertString(cwd);
+  unknownutil.assertString(bname);
+  if (verbose) {
+    console.debug("listWorktreeSuspectsFromDenops");
+    console.debug(`  cwd: ${cwd}`);
+    console.debug(`  bname: ${bname}`);
+  }
+  return [bname, cwd];
+}
+
+async function normSuspect(suspect: string): Promise<string[]> {
+  try {
+    const [stat, lstat] = await Promise.all([
+      Deno.stat(suspect),
+      Deno.lstat(suspect),
+    ]);
+    if (lstat.isSymlink) {
+      if (stat.isFile) {
+        return [
+          path.dirname(suspect),
+          path.dirname(await Deno.realPath(suspect)),
+        ];
+      } else {
+        return [
+          suspect,
+          await Deno.realPath(suspect),
+        ];
+      }
+    } else {
+      if (stat.isFile) {
+        return [path.dirname(suspect)];
+      } else {
+        return [suspect];
+      }
+    }
+  } catch (err) {
+    if (err instanceof Deno.errors.NotFound) {
+      return [];
+    }
+    throw err;
+  }
 }

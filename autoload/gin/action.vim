@@ -1,8 +1,9 @@
 let s:range_from_call = v:null
 
 function! gin#action#fn(callback) abort
+  let bufnr = bufnr()
   let range = gin#action#_get_range()
-  let xs = gin#action#gather_candidates(range)
+  let xs = gin#action#gather_candidates(bufnr, range)
   call call(a:callback, [xs])
 endfunction
 
@@ -16,12 +17,12 @@ function! gin#action#call(name, range) abort
   endtry
 endfunction
 
-function! gin#action#list_actions() abort
-  return denops#request('gin', 'action:list_actions', [])
+function! gin#action#list_actions(bufnr) abort
+  return denops#request('gin', 'action:list_actions', [a:bufnr])
 endfunction
 
-function! gin#action#gather_candidates(range) abort
-  return denops#request('gin', 'action:gather_candidates', [a:range])
+function! gin#action#gather_candidates(bufnr, range) abort
+  return denops#request('gin', 'action:gather_candidates', [a:bufnr, a:range])
 endfunction
 
 function! gin#action#_get_range() abort

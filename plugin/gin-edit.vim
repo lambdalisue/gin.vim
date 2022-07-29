@@ -15,4 +15,4 @@ function! s:command(...) abort
   call denops#request('gin', 'edit:command', a:000)
 endfunction
 
-command! -bar -nargs=* GinEdit call s:command(<f-args>)
+command! -bar -nargs=* GinEdit call s:command(<q-mods>, <f-args>)

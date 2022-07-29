@@ -15,4 +15,4 @@ function! s:command(...) abort
   call denops#request('gin', 'status:command', a:000)
 endfunction
 
-command! -bar -nargs=* GinStatus call s:command(<f-args>)
+command! -bar -nargs=* GinStatus call s:command(<q-mods>, <f-args>)

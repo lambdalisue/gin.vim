@@ -1,7 +1,6 @@
 import type { Denops } from "https://deno.land/x/denops_std@v3.3.0/mod.ts";
 import * as anonymous from "https://deno.land/x/denops_std@v3.3.0/anonymous/mod.ts";
 import * as autocmd from "https://deno.land/x/denops_std@v3.3.0/autocmd/mod.ts";
-import * as fn from "https://deno.land/x/denops_std@v3.3.0/function/mod.ts";
 import type { Range } from "./action.ts";
 
 export type { Range };
@@ -13,14 +12,15 @@ export type Candidate = {
 
 export type Gatherer = (
   denops: Denops,
+  bufnr: number,
   range: Range,
 ) => Promise<Candidate[]>;
 
 export async function register(
   denops: Denops,
+  bufnr: number,
   gatherer: Gatherer,
 ): Promise<void> {
-  const bufnr = await fn.bufnr(denops);
   const pat = `<buffer=${bufnr}>`;
   const [id] = anonymous.once(denops, () => {
     registry.delete(bufnr);
@@ -45,14 +45,14 @@ export async function register(
 
 export async function gatherCandidates(
   denops: Denops,
+  bufnr: number,
   range: Range,
 ): Promise<Candidate[]> {
-  const bufnr = await fn.bufnr(denops);
   const gatherer = registry.get(bufnr);
   if (!gatherer) {
     throw new Error(`No gatherer is registered on a buffer ${bufnr}`);
   }
-  return await gatherer(denops, range);
+  return await gatherer(denops, bufnr, range);
 }
 
 // Global registry

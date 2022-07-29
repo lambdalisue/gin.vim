@@ -10,4 +10,4 @@ function! s:command(...) abort
   call denops#request('gin', 'patch:command', a:000)
 endfunction
 
-command! -bar -nargs=* GinPatch call s:command(<f-args>)
+command! -bar -nargs=* GinPatch call s:command(<q-mods>, <f-args>)

@@ -1,4 +1,6 @@
 import type { Denops } from "https://deno.land/x/denops_std@v3.3.0/mod.ts";
+import * as buffer from "https://deno.land/x/denops_std@v3.3.0/buffer/mod.ts";
+import * as fn from "https://deno.land/x/denops_std@v3.3.0/function/mod.ts";
 import * as helper from "https://deno.land/x/denops_std@v3.3.0/helper/mod.ts";
 import * as mapping from "https://deno.land/x/denops_std@v3.3.0/mapping/mod.ts";
 import * as vars from "https://deno.land/x/denops_std@v3.3.0/variable/mod.ts";
@@ -11,18 +13,24 @@ export type Action = {
 
 export type Range = [number, number];
 
-export async function list(denops: Denops): Promise<Action[]> {
-  const ms = await mapping.list(denops, "<Plug>(gin-action-", { mode: "n" });
-  const cs = ms.flatMap((map) => {
-    const m = map.lhs.match(/^<Plug>\(gin-action-(.*)\)$/);
-    if (!m) {
-      return [];
-    }
-    return [{
-      lhs: map.lhs,
-      rhs: map.rhs,
-      name: m[1],
-    }];
+export async function list(
+  denops: Denops,
+  bufnr: number,
+): Promise<Action[]> {
+  let cs: Action[] = [];
+  await buffer.ensure(denops, bufnr, async () => {
+    const ms = await mapping.list(denops, "<Plug>(gin-action-", { mode: "n" });
+    cs = ms.flatMap((map) => {
+      const m = map.lhs.match(/^<Plug>\(gin-action-(.*)\)$/);
+      if (!m) {
+        return [];
+      }
+      return [{
+        lhs: map.lhs,
+        rhs: map.rhs,
+        name: m[1],
+      }];
+    });
   });
   return cs;
 }
@@ -31,7 +39,7 @@ export async function actionChoice(
   denops: Denops,
   range: Range,
 ): Promise<void> {
-  const cs = await list(denops);
+  const cs = await list(denops, await fn.bufnr(denops));
   const name = await helper.input(denops, {
     prompt: "action: ",
     completion: (

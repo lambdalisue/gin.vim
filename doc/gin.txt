@@ -96,13 +96,13 @@ COMMANDS					*gin-commands*
 
 							*:Gin*
 :Gin[!] [++{option}...] {command} [{args}]
-:Gin[!] [++{option}...] ++buffer [++monochrome] {command} [{args}]
+:Gin[!] [++{option}...] ++buffer[={expr}] [++monochrome] {command} [{args}]
 	Call a git raw {command} with {args} asynchronously and echo result.
 	For example, "Gin add %" on "hello.txt" invokes "git add hello.txt".
 	If a bang (!) is specified, it calls command synchronously instead.
 	See |gin-command-options| for available {option}s.
-	If ++buffer option is specified, it opens a |scratch-buffer| to show
-	the result of the command.
+	If ++buffer option is specified, it opens a |scratch-buffer| or render
+	to {expr} buffer to show the result of the command.
 	If ++monochrome option is specified with ++buffer, no color is applied
 	to the result of the command.
 
@@ -354,12 +354,12 @@ gin#action#call({name}, {range})
 	call gin#action#call('my-custom', [1, 1])
 <
 	       				*gin#action#list_action()*
-gin#action#list_actions()
-	List all available actions of the current buffer.
+gin#action#list_actions({bufnr})
+	List all available actions of the buffer {bufnr}.
 
 	       				*gin#action#gather_candidates()*
-gin#action#gather_candidates({range})
-	Gather and return candidates of the current buffer in {range}.
+gin#action#gather_candidates({bufnr}, {range})
+	Gather and return candidates of the buffer {bufnr} in {range}.
 
 -----------------------------------------------------------------------------
 COMPONENTS					*gin-components*

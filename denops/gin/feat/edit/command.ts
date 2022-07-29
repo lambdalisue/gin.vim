@@ -18,14 +18,26 @@ import {
   validateOpts,
 } from "https://deno.land/x/denops_std@v3.3.0/argument/mod.ts";
 import * as buffer from "https://deno.land/x/denops_std@v3.3.0/buffer/mod.ts";
-import { normCmdArgs } from "../../util/cmd.ts";
-import { getWorktreeFromOpts } from "../../util/worktree.ts";
+import { expand, normCmdArgs } from "../../util/cmd.ts";
+import {
+  findWorktreeFromSuspects,
+  listWorktreeSuspectsFromDenops,
+} from "../../util/worktree.ts";
 import { decodeUtf8 } from "../../util/text.ts";
 import { run } from "../../git/process.ts";
 import { command as bareCommand } from "../../core/bare/command.ts";
 
+export type Options = {
+  worktree?: string;
+  cached?: boolean;
+  opener?: string;
+  cmdarg?: string;
+  mods?: string;
+};
+
 export async function command(
   denops: Denops,
+  mods: string,
   args: string[],
 ): Promise<void> {
   const [opts, flags, residue] = parse(await normCmdArgs(denops, args));
@@ -37,26 +49,62 @@ export async function command(
     "cached",
   ]);
   const [commitish, abspath] = parseResidue(residue);
-  const worktree = await getWorktreeFromOpts(denops, opts);
-  const relpath = path.relative(worktree, abspath);
-  const cmdarg = formatOpts(opts, builtinOpts).join(" ");
+  const options = {
+    worktree: opts["worktree"],
+    cached: "cached" in flags,
+    cmdarg: formatOpts(opts, builtinOpts).join(" "),
+    mods,
+  };
+  await exec(denops, abspath, commitish, flags, options);
+}
 
-  if (!commitish && flags.cached == null) {
+export async function exec(
+  denops: Denops,
+  filename: string,
+  commitish: string | undefined,
+  params: bufname.BufnameParams,
+  options: Options = {},
+): Promise<buffer.OpenResult> {
+  const [verbose] = await batch.gather(
+    denops,
+    async (denops) => {
+      await option.verbose.get(denops);
+    },
+  );
+  unknownutil.assertNumber(verbose);
+
+  const worktree = await findWorktreeFromSuspects(
+    options.worktree
+      ? [await expand(denops, options.worktree)]
+      : await listWorktreeSuspectsFromDenops(denops, !!verbose),
+    !!verbose,
+  );
+  const relpath = path.relative(worktree, filename);
+
+  if (!commitish && !options.cached) {
     // worktree
-    await buffer.open(denops, path.join(worktree, relpath), { cmdarg });
+    return await buffer.open(denops, path.join(worktree, relpath), {
+      opener: options.opener,
+      cmdarg: options.cmdarg,
+      mods: options.mods,
+    });
   } else {
     // commitish/cached
     const bname = bufname.format({
       scheme: "ginedit",
       expr: worktree,
       params: {
-        ...flags,
+        ...params,
         cached: undefined,
         commitish,
       },
       fragment: relpath,
     });
-    await buffer.open(denops, bname.toString(), { cmdarg });
+    return await buffer.open(denops, bname.toString(), {
+      opener: options.opener,
+      cmdarg: options.cmdarg,
+      mods: options.mods,
+    });
   }
 }
 
@@ -76,12 +124,7 @@ export async function read(denops: Denops): Promise<void> {
           false,
         );
       },
-    );
-  unknownutil.assertObject(env, unknownutil.isString);
-  unknownutil.assertNumber(verbose);
-  unknownutil.assertNumber(bufnr);
-  unknownutil.assertString(bname);
-  unknownutil.assertString(cmdarg);
+    ) as [Record<string, string>, number, number, string, string, unknown];
   unknownutil.assertBoolean(disableDefaultMappings);
   const [opts, _] = parseOpts(cmdarg.split(" "));
   validateOpts(opts, builtinOpts);
@@ -149,10 +192,7 @@ export async function write(denops: Denops): Promise<void> {
       await fn.bufname(denops);
       await fn.getline(denops, 1, "$");
     },
-  );
-  unknownutil.assertNumber(bufnr);
-  unknownutil.assertString(bname);
-  unknownutil.assertArray(content, unknownutil.isString);
+  ) as [number, string, string[]];
   const { expr, fragment } = bufname.parse(bname);
   if (!fragment) {
     throw new Error("A buffer 'ginedit://' requires a fragment part");

@@ -12,8 +12,11 @@ import {
   validateOpts,
 } from "https://deno.land/x/denops_std@v3.3.0/argument/mod.ts";
 import * as buffer from "https://deno.land/x/denops_std@v3.3.0/buffer/mod.ts";
-import { normCmdArgs } from "../../util/cmd.ts";
-import { getWorktreeFromOpts } from "../../util/worktree.ts";
+import { expand, normCmdArgs } from "../../util/cmd.ts";
+import {
+  findWorktreeFromSuspects,
+  listWorktreeSuspectsFromDenops,
+} from "../../util/worktree.ts";
 import { execute } from "../../git/process.ts";
 import { bind } from "../../core/bare/command.ts";
 import { Branch, GitBranchResult, parse as parseBranch } from "./parser.ts";
@@ -26,8 +29,20 @@ import {
 
 type Candidate = Branch & CandidateBase;
 
-export async function command(denops: Denops, args: string[]): Promise<void> {
-  const [opts, flags, residues] = parse(await normCmdArgs(denops, args));
+export type Options = {
+  worktree?: string;
+  extraArgs?: string;
+  opener?: string;
+  cmdarg?: string;
+  mods?: string;
+};
+
+export async function command(
+  denops: Denops,
+  mods: string,
+  args: string[],
+): Promise<void> {
+  const [opts, flags, residue] = parse(await normCmdArgs(denops, args));
   validateOpts(opts, ["worktree"]);
   validateFlags(flags, [
     "a",
@@ -39,25 +54,56 @@ export async function command(denops: Denops, args: string[]): Promise<void> {
     "abbrev",
     "no-abbrev",
   ]);
-  const worktree = await getWorktreeFromOpts(denops, opts);
+  const options = {
+    worktree: opts["worktree"],
+    extraArgs: residue.join(" "),
+    mods,
+  };
+  await exec(denops, flags, options);
+}
+
+export async function exec(
+  denops: Denops,
+  params: bufname.BufnameParams,
+  options: Options = {},
+): Promise<buffer.OpenResult> {
+  const [verbose] = await batch.gather(
+    denops,
+    async (denops) => {
+      await option.verbose.get(denops);
+    },
+  );
+  unknownutil.assertNumber(verbose);
+
+  const worktree = await findWorktreeFromSuspects(
+    options.worktree
+      ? [await expand(denops, options.worktree)]
+      : await listWorktreeSuspectsFromDenops(denops, !!verbose),
+    !!verbose,
+  );
   const bname = bufname.format({
     scheme: "ginbranch",
     expr: worktree,
-    params: {
-      ...flags,
-    },
-    fragment: residues.join(" "),
+    params,
+    fragment: options.extraArgs,
   });
-  await buffer.open(denops, bname.toString());
+  return await buffer.open(denops, bname.toString(), {
+    opener: options.opener,
+    cmdarg: options.cmdarg,
+    mods: options.mods,
+  });
 }
 
 export async function read(denops: Denops): Promise<void> {
-  const [bufnr, bname] = await batch.gather(denops, async (denops) => {
-    await fn.bufnr(denops, "%");
-    await fn.bufname(denops, "%");
-  });
-  unknownutil.assertNumber(bufnr);
-  unknownutil.assertString(bname);
+  const [bufnr, bname, env, verbose] = await batch.gather(
+    denops,
+    async (denops) => {
+      await fn.bufnr(denops, "%");
+      await fn.bufname(denops, "%");
+      await fn.environ(denops);
+      await option.verbose.get(denops);
+    },
+  ) as [number, string, Record<string, string>, number];
   const { expr, params, fragment } = bufname.parse(bname);
   const flags = params ?? {};
   const args = [
@@ -67,12 +113,6 @@ export async function read(denops: Denops): Promise<void> {
     ...formatFlags(flags),
     ...(fragment ? [fragment] : []),
   ];
-  const [env, verbose] = await batch.gather(denops, async (denops) => {
-    await fn.environ(denops);
-    await option.verbose.get(denops);
-  });
-  unknownutil.assertObject(env, unknownutil.isString);
-  unknownutil.assertNumber(verbose);
   const stdout = await execute(args, {
     printCommand: !!verbose,
     noOptionalLocks: true,
@@ -85,7 +125,7 @@ export async function read(denops: Denops): Promise<void> {
     a.target == b.target ? 0 : a.target > b.target ? 1 : -1
   );
   const content = render(result);
-  await registerGatherer(denops, getCandidates);
+  await registerGatherer(denops, bufnr, getCandidates);
   await buffer.ensure(denops, bufnr, async () => {
     await batch.batch(denops, async (denops) => {
       await bind(denops, bufnr);
@@ -104,12 +144,12 @@ export async function read(denops: Denops): Promise<void> {
 
 async function getCandidates(
   denops: Denops,
+  bufnr: number,
   [start, end]: Range,
 ): Promise<Candidate[]> {
-  const result = (await vars.b.get(
-    denops,
-    "gin_branch_result",
-  )) as GitBranchResult | null;
+  const result = (await fn.getbufvar(denops, bufnr, "gin_branch_result")) as
+    | GitBranchResult
+    | null;
   if (!result) {
     return [];
   }

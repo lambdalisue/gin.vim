@@ -1,7 +1,17 @@
 import type { Denops } from "https://deno.land/x/denops_std@v3.3.0/mod.ts";
 import * as bufname from "https://deno.land/x/denops_std@v3.3.0/bufname/mod.ts";
 import * as unknownutil from "https://deno.land/x/unknownutil@v2.0.0/mod.ts";
+import { Silent } from "https://deno.land/x/denops_std@v3.3.0/helper/mod.ts";
 import { GIN_FILE_BUFFER_PROTOCOLS } from "../global.ts";
+
+export function parseSilent(mods: string): Silent {
+  if (mods.indexOf("silent!") !== -1) {
+    return "silent!";
+  } else if (mods.indexOf("silent") !== -1) {
+    return "silent";
+  }
+  return "";
+}
 
 export async function normCmdArgs(
   denops: Denops,

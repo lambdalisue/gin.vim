@@ -1,7 +1,10 @@
 import type { Denops } from "https://deno.land/x/denops_std@v3.3.0/mod.ts";
 import { Cache } from "https://deno.land/x/local_cache@1.0/mod.ts";
 import { decodeUtf8 } from "../util/text.ts";
-import { getWorktree } from "../util/worktree.ts";
+import {
+  findWorktreeFromSuspects,
+  listWorktreeSuspectsFromDenops,
+} from "../util/worktree.ts";
 import { execute } from "../git/process.ts";
 
 type Data = [number, number];
@@ -14,10 +17,12 @@ async function getData(
   if (cache.has("data")) {
     return cache.get("data");
   }
-  const cwd = await getWorktree(denops);
+  const worktree = await findWorktreeFromSuspects(
+    await listWorktreeSuspectsFromDenops(denops),
+  );
   const result = await Promise.all([
-    getAhead(cwd),
-    getBehind(cwd),
+    getAhead(worktree),
+    getBehind(worktree),
   ]);
   cache.set("data", result);
   return result;

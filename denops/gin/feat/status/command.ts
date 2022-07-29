@@ -14,8 +14,11 @@ import {
   validateOpts,
 } from "https://deno.land/x/denops_std@v3.3.0/argument/mod.ts";
 import * as buffer from "https://deno.land/x/denops_std@v3.3.0/buffer/mod.ts";
-import { normCmdArgs } from "../../util/cmd.ts";
-import { getWorktreeFromOpts } from "../../util/worktree.ts";
+import { expand, normCmdArgs } from "../../util/cmd.ts";
+import {
+  findWorktreeFromSuspects,
+  listWorktreeSuspectsFromDenops,
+} from "../../util/worktree.ts";
 import { Entry, GitStatusResult, parse as parseStatus } from "./parser.ts";
 import { render } from "./render.ts";
 import { execute } from "../../git/process.ts";
@@ -28,8 +31,16 @@ import {
 
 type Candidate = Entry & CandidateBase;
 
+export type Options = {
+  worktree?: string;
+  opener?: string;
+  cmdarg?: string;
+  mods?: string;
+};
+
 export async function command(
   denops: Denops,
+  mods: string,
   args: string[],
 ): Promise<void> {
   const [opts, flags, _] = parse(await normCmdArgs(denops, args));
@@ -45,25 +56,57 @@ export async function command(
     "no-renames",
     "find-renames",
   ]);
-  const worktree = await getWorktreeFromOpts(denops, opts);
+  const options = {
+    worktree: opts["worktree"],
+    mods,
+  };
+  await exec(denops, flags, options);
+}
+
+export async function exec(
+  denops: Denops,
+  params: bufname.BufnameParams,
+  options: Options = {},
+): Promise<buffer.OpenResult> {
+  const [verbose] = await batch.gather(
+    denops,
+    async (denops) => {
+      await option.verbose.get(denops);
+    },
+  );
+  unknownutil.assertNumber(verbose);
+
+  const worktree = await findWorktreeFromSuspects(
+    options.worktree
+      ? [await expand(denops, options.worktree)]
+      : await listWorktreeSuspectsFromDenops(denops, !!verbose),
+    !!verbose,
+  );
   const bname = bufname.format({
     scheme: "ginstatus",
     expr: worktree,
     params: {
       "untracked-files": "all",
-      ...flags,
+      ...params,
     },
   });
-  await buffer.open(denops, bname.toString());
+  return await buffer.open(denops, bname.toString(), {
+    opener: options.opener,
+    cmdarg: options.cmdarg,
+    mods: options.mods,
+  });
 }
 
 export async function read(denops: Denops): Promise<void> {
-  const [bufnr, bname] = await batch.gather(denops, async (denops) => {
-    await fn.bufnr(denops, "%");
-    await fn.bufname(denops, "%");
-  });
-  unknownutil.assertNumber(bufnr);
-  unknownutil.assertString(bname);
+  const [bufnr, bname, env, verbose] = await batch.gather(
+    denops,
+    async (denops) => {
+      await fn.bufnr(denops, "%");
+      await fn.bufname(denops, "%");
+      await fn.environ(denops);
+      await option.verbose.get(denops);
+    },
+  ) as [number, string, Record<string, string>, number];
   const { expr, params } = bufname.parse(bname);
   const flags = params ?? {};
   const args = [
@@ -74,12 +117,6 @@ export async function read(denops: Denops): Promise<void> {
     "-z",
     ...formatFlags(flags),
   ];
-  const [env, verbose] = await batch.gather(denops, async (denops) => {
-    await fn.environ(denops);
-    await option.verbose.get(denops);
-  });
-  unknownutil.assertObject(env, unknownutil.isString);
-  unknownutil.assertNumber(verbose);
   const stdout = await execute(args, {
     printCommand: !!verbose,
     noOptionalLocks: true,
@@ -92,8 +129,8 @@ export async function read(denops: Denops): Promise<void> {
     a.path == b.path ? 0 : a.path > b.path ? 1 : -1
   );
   const content = render(result);
-  await registerGatherer(denops, (denops, range) => {
-    return getCandidates(denops, range, expr);
+  await registerGatherer(denops, bufnr, (denops, bufnr, range) => {
+    return getCandidates(denops, bufnr, range, expr);
   });
   await buffer.ensure(denops, bufnr, async () => {
     await batch.batch(denops, async (denops) => {
@@ -125,10 +162,11 @@ export async function read(denops: Denops): Promise<void> {
 
 async function getCandidates(
   denops: Denops,
+  bufnr: number,
   [start, end]: Range,
   worktree: string,
 ): Promise<Candidate[]> {
-  const result = await vars.b.get(denops, "gin_status_result") as
+  const result = await fn.getbufvar(denops, bufnr, "gin_status_result") as
     | GitStatusResult
     | null;
   if (!result || (start === end && start < 2)) {

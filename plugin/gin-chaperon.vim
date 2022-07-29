@@ -10,4 +10,4 @@ function! s:command(...) abort
   call denops#request('gin', 'chaperon:command', a:000)
 endfunction
 
-command! -bar -nargs=* GinChaperon call s:command(<f-args>)
+command! -bar -nargs=* GinChaperon call s:command(<q-mods>, <f-args>)
