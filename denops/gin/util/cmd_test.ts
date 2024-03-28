@@ -1,6 +1,6 @@
 import { assertEquals } from "https://deno.land/std@0.221.0/assert/mod.ts";
-import * as batch from "https://deno.land/x/denops_std@v6.0.1/batch/mod.ts";
-import * as fn from "https://deno.land/x/denops_std@v6.0.1/function/mod.ts";
+import * as batch from "https://deno.land/x/denops_std@v6.4.0/batch/mod.ts";
+import * as fn from "https://deno.land/x/denops_std@v6.4.0/function/mod.ts";
 import * as path from "https://deno.land/std@0.221.0/path/mod.ts";
 import { deadline } from "https://deno.land/std@0.221.0/async/mod.ts";
 import { test } from "./testutil.ts";

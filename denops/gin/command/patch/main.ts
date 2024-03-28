@@ -1,12 +1,12 @@
-import type { Denops } from "https://deno.land/x/denops_std@v6.0.1/mod.ts";
+import type { Denops } from "https://deno.land/x/denops_std@v6.4.0/mod.ts";
 import { assert, is } from "https://deno.land/x/unknownutil@v3.14.1/mod.ts";
-import * as helper from "https://deno.land/x/denops_std@v6.0.1/helper/mod.ts";
+import * as helper from "https://deno.land/x/denops_std@v6.4.0/helper/mod.ts";
 import {
   builtinOpts,
   formatOpts,
   parseOpts,
   validateOpts,
-} from "https://deno.land/x/denops_std@v6.0.1/argument/mod.ts";
+} from "https://deno.land/x/denops_std@v6.4.0/argument/mod.ts";
 import { fillCmdArgs, normCmdArgs, parseSilent } from "../../util/cmd.ts";
 import { exec } from "./command.ts";
 

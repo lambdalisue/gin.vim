@@ -1,7 +1,7 @@
-import type { Denops } from "https://deno.land/x/denops_std@v6.0.1/mod.ts";
-import * as batch from "https://deno.land/x/denops_std@v6.0.1/batch/mod.ts";
-import { parse as parseBufname } from "https://deno.land/x/denops_std@v6.0.1/bufname/mod.ts";
-import * as fn from "https://deno.land/x/denops_std@v6.0.1/function/mod.ts";
+import type { Denops } from "https://deno.land/x/denops_std@v6.4.0/mod.ts";
+import * as batch from "https://deno.land/x/denops_std@v6.4.0/batch/mod.ts";
+import { parse as parseBufname } from "https://deno.land/x/denops_std@v6.4.0/bufname/mod.ts";
+import * as fn from "https://deno.land/x/denops_std@v6.4.0/function/mod.ts";
 import * as path from "https://deno.land/std@0.221.0/path/mod.ts";
 import { GIN_BUFFER_PROTOCOLS } from "../global.ts";
 import { expand } from "../util/expand.ts";
