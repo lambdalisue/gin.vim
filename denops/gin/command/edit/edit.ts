@@ -1,5 +1,5 @@
 import type { Denops } from "https://deno.land/x/denops_std@v6.4.0/mod.ts";
-import { ensure, is } from "https://deno.land/x/unknownutil@v3.14.1/mod.ts";
+import { ensure, is } from "https://deno.land/x/unknownutil@v3.17.0/mod.ts";
 import { unnullish } from "https://deno.land/x/unnullish@v1.0.1/mod.ts";
 import * as autocmd from "https://deno.land/x/denops_std@v6.4.0/autocmd/mod.ts";
 import * as batch from "https://deno.land/x/denops_std@v6.4.0/batch/mod.ts";

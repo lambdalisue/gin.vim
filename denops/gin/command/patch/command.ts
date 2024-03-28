@@ -5,7 +5,7 @@ import * as fn from "https://deno.land/x/denops_std@v6.4.0/function/mod.ts";
 import * as mapping from "https://deno.land/x/denops_std@v6.4.0/mapping/mod.ts";
 import * as vars from "https://deno.land/x/denops_std@v6.4.0/variable/mod.ts";
 import * as option from "https://deno.land/x/denops_std@v6.4.0/option/mod.ts";
-import { assert, is } from "https://deno.land/x/unknownutil@v3.14.1/mod.ts";
+import { assert, is } from "https://deno.land/x/unknownutil@v3.17.0/mod.ts";
 import * as buffer from "https://deno.land/x/denops_std@v6.4.0/buffer/mod.ts";
 import { findWorktreeFromDenops } from "../../git/worktree.ts";
 import { exec as execEdit } from "../edit/command.ts";
