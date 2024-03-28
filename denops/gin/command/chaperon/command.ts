@@ -4,7 +4,7 @@ import * as fn from "https://deno.land/x/denops_std@v6.0.1/function/mod.ts";
 import * as mapping from "https://deno.land/x/denops_std@v6.0.1/mapping/mod.ts";
 import * as vars from "https://deno.land/x/denops_std@v6.0.1/variable/mod.ts";
 import { assert, is } from "https://deno.land/x/unknownutil@v3.14.1/mod.ts";
-import * as path from "https://deno.land/std@0.214.0/path/mod.ts";
+import * as path from "https://deno.land/std@0.221.0/path/mod.ts";
 import * as option from "https://deno.land/x/denops_std@v6.0.1/option/mod.ts";
 import * as buffer from "https://deno.land/x/denops_std@v6.0.1/buffer/mod.ts";
 import { findWorktreeFromDenops } from "../../git/worktree.ts";
