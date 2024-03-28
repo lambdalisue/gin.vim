@@ -2,7 +2,7 @@ import * as path from "https://deno.land/std@0.221.0/path/mod.ts";
 import {
   test as testOri,
   TestDefinition,
-} from "https://deno.land/x/denops_test@v1.6.1/mod.ts";
+} from "https://deno.land/x/denops_test@v1.6.2/mod.ts";
 
 const runtimepath = path.resolve(
   path.fromFileUrl(new URL("../../..", import.meta.url)),
