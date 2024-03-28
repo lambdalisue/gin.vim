@@ -1,8 +1,8 @@
-import type { Denops } from "https://deno.land/x/denops_std@v6.0.1/mod.ts";
+import type { Denops } from "https://deno.land/x/denops_std@v6.4.0/mod.ts";
 import { readAll } from "https://deno.land/x/streamtools@v0.5.0/read_all.ts";
-import * as batch from "https://deno.land/x/denops_std@v6.0.1/batch/mod.ts";
-import * as fn from "https://deno.land/x/denops_std@v6.0.1/function/mod.ts";
-import * as option from "https://deno.land/x/denops_std@v6.0.1/option/mod.ts";
+import * as batch from "https://deno.land/x/denops_std@v6.4.0/batch/mod.ts";
+import * as fn from "https://deno.land/x/denops_std@v6.4.0/function/mod.ts";
+import * as option from "https://deno.land/x/denops_std@v6.4.0/option/mod.ts";
 import { decodeUtf8 } from "../util/text.ts";
 import { removeAnsiEscapeCode } from "../util/ansi_escape_code.ts";
 import { IndicatorStream } from "../util/indicator_stream.ts";

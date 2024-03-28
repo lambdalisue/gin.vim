@@ -1,4 +1,4 @@
-import * as path from "https://deno.land/std@0.214.0/path/mod.ts";
+import * as path from "https://deno.land/std@0.221.0/path/mod.ts";
 import { Cache } from "https://deno.land/x/ttl_cache@v0.1.1/mod.ts";
 import { execute } from "./process.ts";
 import { decodeUtf8 } from "../util/text.ts";

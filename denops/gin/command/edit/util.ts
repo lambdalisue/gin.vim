@@ -1,4 +1,4 @@
-import { assert, is } from "https://deno.land/x/unknownutil@v3.14.1/mod.ts";
+import { assert, is } from "https://deno.land/x/unknownutil@v3.17.0/mod.ts";
 
 export function formatTreeish(
   commitish: string | string[] | undefined,

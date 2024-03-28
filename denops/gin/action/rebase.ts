@@ -1,6 +1,6 @@
-import type { Denops } from "https://deno.land/x/denops_std@v6.0.1/mod.ts";
-import * as batch from "https://deno.land/x/denops_std@v6.0.1/batch/mod.ts";
-import * as helper from "https://deno.land/x/denops_std@v6.0.1/helper/mod.ts";
+import type { Denops } from "https://deno.land/x/denops_std@v6.4.0/mod.ts";
+import * as batch from "https://deno.land/x/denops_std@v6.4.0/batch/mod.ts";
+import * as helper from "https://deno.land/x/denops_std@v6.4.0/helper/mod.ts";
 import { define, GatherCandidates, Range } from "./core.ts";
 
 export type Candidate = { commit: string };
